@@ -10,9 +10,13 @@ import (
 func main() {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(404)
-	})
+	mux.Handle("/", http.FileServer(http.Dir("./static")))
+
+	/*
+		mux.HandleFunc("/*", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(404)
+		})
+	*/
 
 	var server http.Server
 
