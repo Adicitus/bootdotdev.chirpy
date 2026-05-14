@@ -22,8 +22,14 @@ func main() {
 
 	mux.Handle("/app/", stats.HitsCounter(files))
 
-	mux.HandleFunc("GET /api/metrics", func(w http.ResponseWriter, r *http.Request) {
-		msg := fmt.Sprintf("Hits: %d", stats.hits.Load())
+	mux.HandleFunc("GET /admin/metrics", func(w http.ResponseWriter, r *http.Request) {
+		msg := fmt.Sprintf(`
+<html>
+  <body>
+    <h1>Welcome, Chirpy Admin</h1>
+    <p>Chirpy has been visited %d times!</p>
+  </body>
+</html>`, stats.hits.Load())
 		sr := strings.NewReader(msg)
 		msg_b := make([]byte, len(msg))
 		_, err := sr.Read(msg_b)
@@ -37,7 +43,7 @@ func main() {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.Write(msg_b)
 	})
-	mux.HandleFunc("POST /api/reset", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /admin/reset", func(w http.ResponseWriter, r *http.Request) {
 		stats.Reset()
 	})
 
