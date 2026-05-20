@@ -1,12 +1,27 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 )
+
+func reportError(w http.ResponseWriter, err error) {
+	data, err := json.Marshal(ChirpError{
+		Error: err.Error(),
+	})
+
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("server error"))
+	}
+
+	w.WriteHeader(400)
+	w.Write(data)
+}
 
 func main() {
 
@@ -45,6 +60,41 @@ func main() {
 	})
 	mux.HandleFunc("POST /admin/reset", func(w http.ResponseWriter, r *http.Request) {
 		stats.Reset()
+	})
+	mux.HandleFunc("POST /api/validate_chirp", func(w http.ResponseWriter, r *http.Request) {
+		if r.ContentLength == 0 {
+			w.WriteHeader(400)
+			w.Write([]byte("No chirp submitted"))
+		}
+		defer r.Body.Close()
+
+		chirp := new(Chirp)
+		err := json.NewDecoder(r.Body).Decode(chirp)
+
+		if err != nil {
+			reportError(w, err)
+			return
+		}
+
+		err = validateChirp(chirp)
+
+		if err != nil {
+			reportError(w, err)
+			return
+		}
+
+		data, err := json.Marshal(ChirpValid{
+			Valid: true,
+		})
+
+		if err != nil {
+			w.WriteHeader(500)
+			w.Write([]byte("Server error"))
+			return
+		}
+
+		w.WriteHeader(200)
+		w.Write(data)
 	})
 
 	var server http.Server
