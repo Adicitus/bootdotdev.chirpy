@@ -11,7 +11,7 @@ type ChirpError struct {
 }
 
 type ChirpValid struct {
-	Valid bool `json:"valid"`
+	CleanedBody string `json:"cleaned_body"`
 }
 
 func validateChirp(chirp *Chirp) error {

@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/Adicitus/bootdotdev.chirpy/trie"
 )
 
 func handleHealthz(_ *ApiStats) func(w http.ResponseWriter, r *http.Request) {
@@ -48,6 +50,13 @@ func handleAdminReset(stats *ApiStats) func(w http.ResponseWriter, r *http.Reque
 }
 
 func handleValidateChirp(_ *ApiStats) func(w http.ResponseWriter, r *http.Request) {
+	badWords := trie.NewTrie()
+	badWords.CaseInsensitive = true
+
+	badWords.Add("kerfuffle")
+	badWords.Add("sharbert")
+	badWords.Add("fornax")
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.ContentLength == 0 {
 			w.WriteHeader(400)
@@ -70,8 +79,15 @@ func handleValidateChirp(_ *ApiStats) func(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
+		clean_body, err := badWords.Replace(chirp.Body, "****")
+
+		if err != nil {
+			reportError(w, err)
+			return
+		}
+
 		data, err := json.Marshal(ChirpValid{
-			Valid: true,
+			CleanedBody: clean_body,
 		})
 
 		if err != nil {
