@@ -264,3 +264,59 @@ func TestTrieNodeReplaceCaseInsensitive(t *testing.T) {
 		}
 	}
 }
+
+func TestTrieNodeCompletions(t *testing.T) {
+	words := NewTrie()
+
+	words.Add("fox")
+	words.Add("foxbat")
+	words.Add("foxhound")
+
+	c, err := words.Complete("fox")
+
+	if err != nil {
+		t.Fail()
+		t.Logf("Error: %v\n", err)
+		return
+	}
+
+	if len(c) != 3 {
+		t.Fail()
+		t.Logf("Expected %d completions, found %d", 3, len(c))
+	}
+
+	c, err = words.Complete("Fox")
+
+	if err != nil {
+		t.Fail()
+		t.Logf("Error: %v\n", err)
+		return
+	}
+
+	if len(c) != 0 {
+		t.Fail()
+		t.Logf("Expected %d completions, found %d", 0, len(c))
+	}
+}
+
+func TestTrieNodeCompletionsCaseInsensitive(t *testing.T) {
+	words := NewTrie()
+	words.CaseInsensitive = true
+
+	words.Add("fox")
+	words.Add("foxbat")
+	words.Add("foxhound")
+
+	c, err := words.Complete("Fox")
+
+	if err != nil {
+		t.Fail()
+		t.Logf("Error: %v\n", err)
+		return
+	}
+
+	if len(c) != 3 {
+		t.Fail()
+		t.Logf("Expected %d completions, found %d", 3, len(c))
+	}
+}

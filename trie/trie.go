@@ -71,6 +71,16 @@ func (n *TrieNode) Replace(s string, replacer string) (string, error) {
 	return new_s.String(), nil
 }
 
+func (n *TrieNode) Complete(sample string) ([]string, error) {
+	c, err := n.complete(strings.NewReader(sample), new(strings.Builder), []string{})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
 func (n *TrieNode) add(tail strings.Reader) error {
 	if tail.Len() == 0 {
 		n.End = true
@@ -167,4 +177,55 @@ func (n *TrieNode) lPresent(tail *strings.Reader, agg int, longest int) (found b
 	}
 
 	return next.lPresent(tail, agg+1, longest)
+}
+
+func (n *TrieNode) complete(sample *strings.Reader, agg *strings.Builder, completions []string) ([]string, error) {
+	if n.End {
+		completions = append(completions, agg.String())
+	}
+
+	if sample.Len() > 0 {
+
+		r, _, err := sample.ReadRune()
+
+		if err != nil {
+			return nil, err
+		}
+
+		agg.WriteRune(r)
+
+		if n.CaseInsensitive {
+			r = unicode.ToLower(r)
+		}
+
+		next, ok := n.Next[r]
+
+		if !ok {
+			return completions, nil
+		}
+
+		return next.complete(sample, agg, completions)
+	}
+
+	for r, next := range n.Next {
+
+		agg.WriteRune(r)
+
+		if n.CaseInsensitive {
+			r = unicode.ToLower(r)
+		}
+
+		new_agg := new(strings.Builder)
+		new_agg.WriteString(agg.String())
+
+		var err error
+
+		completions, err = next.complete(sample, new_agg, completions)
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return completions, nil
 }
