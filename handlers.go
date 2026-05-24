@@ -45,7 +45,13 @@ func handleAdminMetrics(cctx *ChirpyContext) func(w http.ResponseWriter, r *http
 
 func handleAdminReset(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cctx.Stats.Reset()
+		if os.Getenv("PLATFORM") == "dev" {
+			cctx.Stats.Reset()
+			cctx.DB.ClearUsers(r.Context())
+			w.WriteHeader(200)
+		} else {
+			w.WriteHeader(403)
+		}
 	}
 }
 
@@ -97,6 +103,42 @@ func handleValidateChirp(_ *ChirpyContext) func(w http.ResponseWriter, r *http.R
 		}
 
 		w.WriteHeader(200)
+		w.Write(data)
+	}
+}
+
+func handleCreateUser(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.ContentLength == 0 {
+			w.WriteHeader(400)
+			w.Write([]byte("No user details submitted"))
+		}
+		defer r.Body.Close()
+
+		details := new(UserDetails)
+		err := json.NewDecoder(r.Body).Decode(details)
+
+		if err != nil {
+			reportError(w, err)
+			return
+		}
+
+		user, err := cctx.DB.CreateUser(r.Context(), details.Email)
+
+		if err != nil {
+			reportError(w, err)
+			return
+		}
+
+		data, err := json.Marshal(user)
+
+		if err != nil {
+			reportError(w, err)
+			return
+		}
+
+		w.WriteHeader(201)
 		w.Write(data)
 	}
 }

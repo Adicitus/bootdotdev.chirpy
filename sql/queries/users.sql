@@ -11,3 +11,7 @@ INSERT INTO users (
     CURRENT_TIMESTAMP,
     $1
 ) RETURNING *;
+
+-- name: ClearUsers :exec
+
+DELETE FROM users;

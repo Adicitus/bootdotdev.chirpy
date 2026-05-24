@@ -55,6 +55,7 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", handleAdminMetrics(cctx))
 	mux.HandleFunc("POST /admin/reset", handleAdminReset(cctx))
 	mux.HandleFunc("POST /api/validate_chirp", handleValidateChirp(cctx))
+	mux.HandleFunc("POST /api/users", handleCreateUser(cctx))
 
 	var server http.Server
 
