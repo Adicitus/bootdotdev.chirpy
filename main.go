@@ -1,12 +1,22 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+
+	"github.com/Adicitus/bootdotdev.chirpy/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
+
+type ChirpyContext struct {
+	Stats *ApiStats
+	DB    *database.Queries
+}
 
 func reportError(w http.ResponseWriter, err error) {
 	data, err := json.Marshal(ChirpError{
@@ -24,15 +34,27 @@ func reportError(w http.ResponseWriter, err error) {
 
 func main() {
 
-	stats := new(ApiStats)
+	godotenv.Load()
+
+	db, err := sql.Open("postgres", os.Getenv("DB_URL"))
+
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+	}
+
+	cctx := new(ChirpyContext)
+
+	cctx.DB = database.New(db)
+
+	cctx.Stats = new(ApiStats)
 	files := http.StripPrefix("/app", http.FileServer(http.Dir("./static")))
 	mux := http.NewServeMux()
 
-	mux.Handle("/app/", stats.HitsCounter(files))
-	mux.HandleFunc("GET /api/healthz", handleHealthz(stats))
-	mux.HandleFunc("GET /admin/metrics", handleAdminMetrics(stats))
-	mux.HandleFunc("POST /admin/reset", handleAdminReset(stats))
-	mux.HandleFunc("POST /api/validate_chirp", handleValidateChirp(stats))
+	mux.Handle("/app/", cctx.Stats.HitsCounter(files))
+	mux.HandleFunc("GET /api/healthz", handleHealthz(cctx))
+	mux.HandleFunc("GET /admin/metrics", handleAdminMetrics(cctx))
+	mux.HandleFunc("POST /admin/reset", handleAdminReset(cctx))
+	mux.HandleFunc("POST /api/validate_chirp", handleValidateChirp(cctx))
 
 	var server http.Server
 

@@ -10,7 +10,7 @@ import (
 	"github.com/Adicitus/bootdotdev.chirpy/trie"
 )
 
-func handleHealthz(_ *ApiStats) func(w http.ResponseWriter, r *http.Request) {
+func handleHealthz(_ *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(200)
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -18,7 +18,7 @@ func handleHealthz(_ *ApiStats) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func handleAdminMetrics(stats *ApiStats) func(w http.ResponseWriter, r *http.Request) {
+func handleAdminMetrics(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		msg := fmt.Sprintf(`
 <html>
@@ -27,7 +27,7 @@ func handleAdminMetrics(stats *ApiStats) func(w http.ResponseWriter, r *http.Req
 <p>Chirpy has been visited %d times!</p>
 </body>
 </html>`,
-			stats.hits.Load())
+			cctx.Stats.hits.Load())
 		sr := strings.NewReader(msg)
 		msg_b := make([]byte, len(msg))
 		_, err := sr.Read(msg_b)
@@ -43,13 +43,13 @@ func handleAdminMetrics(stats *ApiStats) func(w http.ResponseWriter, r *http.Req
 	}
 }
 
-func handleAdminReset(stats *ApiStats) func(w http.ResponseWriter, r *http.Request) {
+func handleAdminReset(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		stats.Reset()
+		cctx.Stats.Reset()
 	}
 }
 
-func handleValidateChirp(_ *ApiStats) func(w http.ResponseWriter, r *http.Request) {
+func handleValidateChirp(_ *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
 	badWords := trie.NewTrie()
 	badWords.CaseInsensitive = true
 
