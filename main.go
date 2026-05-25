@@ -9,13 +9,15 @@ import (
 	"os/signal"
 
 	"github.com/Adicitus/bootdotdev.chirpy/internal/database"
+	"github.com/Adicitus/bootdotdev.chirpy/trie"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 type ChirpyContext struct {
-	Stats *ApiStats
-	DB    *database.Queries
+	Stats    *ApiStats
+	DB       *database.Queries
+	BadWords *trie.TrieNode
 }
 
 func reportError(w http.ResponseWriter, err error) {
@@ -30,6 +32,11 @@ func reportError(w http.ResponseWriter, err error) {
 
 	w.WriteHeader(400)
 	w.Write(data)
+}
+
+func readRequestBody[T any](r *http.Request) (v T, err error) {
+	err = json.NewDecoder(r.Body).Decode(&v)
+	return
 }
 
 func main() {
@@ -47,6 +54,14 @@ func main() {
 	cctx.DB = database.New(db)
 
 	cctx.Stats = new(ApiStats)
+
+	cctx.BadWords = trie.NewTrie()
+	cctx.BadWords.CaseInsensitive = true
+
+	cctx.BadWords.Add("kerfuffle")
+	cctx.BadWords.Add("sharbert")
+	cctx.BadWords.Add("fornax")
+
 	files := http.StripPrefix("/app", http.FileServer(http.Dir("./static")))
 	mux := http.NewServeMux()
 
@@ -56,6 +71,7 @@ func main() {
 	mux.HandleFunc("POST /admin/reset", handleAdminReset(cctx))
 	mux.HandleFunc("POST /api/validate_chirp", handleValidateChirp(cctx))
 	mux.HandleFunc("POST /api/users", handleCreateUser(cctx))
+	mux.HandleFunc("POST /api/chirps", handleCreateChirp(cctx))
 
 	var server http.Server
 

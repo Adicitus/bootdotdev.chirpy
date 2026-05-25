@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Adicitus/bootdotdev.chirpy/trie"
+	"github.com/Adicitus/bootdotdev.chirpy/internal/database"
 )
 
 func handleHealthz(_ *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
@@ -55,13 +55,7 @@ func handleAdminReset(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.R
 	}
 }
 
-func handleValidateChirp(_ *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
-	badWords := trie.NewTrie()
-	badWords.CaseInsensitive = true
-
-	badWords.Add("kerfuffle")
-	badWords.Add("sharbert")
-	badWords.Add("fornax")
+func handleValidateChirp(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.ContentLength == 0 {
@@ -70,31 +64,21 @@ func handleValidateChirp(_ *ChirpyContext) func(w http.ResponseWriter, r *http.R
 		}
 		defer r.Body.Close()
 
-		chirp := new(Chirp)
-		err := json.NewDecoder(r.Body).Decode(chirp)
+		chirp, err := readRequestBody[ChirpSubmission](r)
 
 		if err != nil {
 			reportError(w, err)
 			return
 		}
 
-		err = validateChirp(chirp)
+		valid, err := validateChirp(r.Context(), cctx, &chirp)
 
 		if err != nil {
 			reportError(w, err)
 			return
 		}
 
-		clean_body, err := badWords.Replace(chirp.Body, "****")
-
-		if err != nil {
-			reportError(w, err)
-			return
-		}
-
-		data, err := json.Marshal(ChirpValid{
-			CleanedBody: clean_body,
-		})
+		data, err := json.Marshal(valid)
 
 		if err != nil {
 			w.WriteHeader(500)
@@ -110,14 +94,8 @@ func handleValidateChirp(_ *ChirpyContext) func(w http.ResponseWriter, r *http.R
 func handleCreateUser(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.ContentLength == 0 {
-			w.WriteHeader(400)
-			w.Write([]byte("No user details submitted"))
-		}
-		defer r.Body.Close()
 
-		details := new(UserDetails)
-		err := json.NewDecoder(r.Body).Decode(details)
+		details, err := readRequestBody[UserDetails](r)
 
 		if err != nil {
 			reportError(w, err)
@@ -136,6 +114,46 @@ func handleCreateUser(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.R
 		if err != nil {
 			reportError(w, err)
 			return
+		}
+
+		w.WriteHeader(201)
+		w.Write(data)
+	}
+}
+
+func handleCreateChirp(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		defer r.Body.Close()
+		chirpSubmission, err := readRequestBody[ChirpSubmission](r)
+
+		if err != nil {
+			reportError(w, err)
+			return
+		}
+
+		valid, err := validateChirp(r.Context(), cctx, &chirpSubmission)
+
+		if err != nil {
+			reportError(w, err)
+			return
+		}
+
+		chirp, err := cctx.DB.CreateChirp(r.Context(), database.CreateChirpParams{
+			Body:   valid.CleanedBody,
+			UserID: valid.UserID,
+		})
+
+		if err != nil {
+			reportError(w, err)
+			return
+		}
+
+		data, err := json.Marshal(chirp)
+
+		if err != nil {
+			reportError(w, err)
 		}
 
 		w.WriteHeader(201)
