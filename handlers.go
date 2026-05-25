@@ -160,3 +160,25 @@ func handleCreateChirp(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.
 		w.Write(data)
 	}
 }
+
+func handleGetChirps(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		chirps, err := cctx.DB.GetChirps(r.Context())
+
+		if err != nil {
+			reportError(w, err)
+			return
+		}
+
+		data, err := json.Marshal(chirps)
+
+		if err != nil {
+			reportError(w, err)
+			return
+		}
+
+		w.WriteHeader(200)
+		w.Write(data)
+	}
+}

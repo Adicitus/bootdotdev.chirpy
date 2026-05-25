@@ -72,6 +72,7 @@ func main() {
 	mux.HandleFunc("POST /api/validate_chirp", handleValidateChirp(cctx))
 	mux.HandleFunc("POST /api/users", handleCreateUser(cctx))
 	mux.HandleFunc("POST /api/chirps", handleCreateChirp(cctx))
+	mux.HandleFunc("GET /api/chirps", handleGetChirps(cctx))
 
 	var server http.Server
 

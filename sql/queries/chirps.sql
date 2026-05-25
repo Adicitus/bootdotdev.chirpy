@@ -12,3 +12,6 @@ INSERT INTO chirps (
     @body::TEXT,
     @user_id::UUID
 ) RETURNING *;
+
+-- name: GetChirps :many
+SELECT * FROM chirps ORDER BY created_at ASC;
