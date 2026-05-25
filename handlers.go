@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/Adicitus/bootdotdev.chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
 func handleHealthz(_ *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
@@ -67,14 +68,14 @@ func handleValidateChirp(cctx *ChirpyContext) func(w http.ResponseWriter, r *htt
 		chirp, err := readRequestBody[ChirpSubmission](r)
 
 		if err != nil {
-			reportError(w, err)
+			reportError(w, err, 400)
 			return
 		}
 
 		valid, err := validateChirp(r.Context(), cctx, &chirp)
 
 		if err != nil {
-			reportError(w, err)
+			reportError(w, err, 400)
 			return
 		}
 
@@ -98,21 +99,21 @@ func handleCreateUser(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.R
 		details, err := readRequestBody[UserDetails](r)
 
 		if err != nil {
-			reportError(w, err)
+			reportError(w, err, 400)
 			return
 		}
 
 		user, err := cctx.DB.CreateUser(r.Context(), details.Email)
 
 		if err != nil {
-			reportError(w, err)
+			reportError(w, err, 400)
 			return
 		}
 
 		data, err := json.Marshal(user)
 
 		if err != nil {
-			reportError(w, err)
+			reportError(w, err, 500)
 			return
 		}
 
@@ -129,14 +130,14 @@ func handleCreateChirp(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.
 		chirpSubmission, err := readRequestBody[ChirpSubmission](r)
 
 		if err != nil {
-			reportError(w, err)
+			reportError(w, err, 400)
 			return
 		}
 
 		valid, err := validateChirp(r.Context(), cctx, &chirpSubmission)
 
 		if err != nil {
-			reportError(w, err)
+			reportError(w, err, 400)
 			return
 		}
 
@@ -146,14 +147,14 @@ func handleCreateChirp(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.
 		})
 
 		if err != nil {
-			reportError(w, err)
+			reportError(w, err, 400)
 			return
 		}
 
 		data, err := json.Marshal(chirp)
 
 		if err != nil {
-			reportError(w, err)
+			reportError(w, err, 500)
 		}
 
 		w.WriteHeader(201)
@@ -167,14 +168,51 @@ func handleGetChirps(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Re
 		chirps, err := cctx.DB.GetChirps(r.Context())
 
 		if err != nil {
-			reportError(w, err)
+			reportError(w, err, 500)
 			return
 		}
 
 		data, err := json.Marshal(chirps)
 
 		if err != nil {
-			reportError(w, err)
+			reportError(w, err, 500)
+			return
+		}
+
+		w.WriteHeader(200)
+		w.Write(data)
+	}
+}
+
+func handleGetChirp(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		id_s := r.PathValue("chirpID")
+
+		if id_s == "" {
+			reportError(w, fmt.Errorf("No chirp ID provided"), 404)
+			return
+		}
+
+		id, err := uuid.Parse(id_s)
+
+		if err != nil {
+			reportError(w, err, 400)
+			return
+		}
+
+		chirp, err := cctx.DB.GetChirp(r.Context(), id)
+
+		if err != nil {
+			reportError(w, err, 404)
+			return
+		}
+
+		data, err := json.Marshal(chirp)
+
+		if err != nil {
+			reportError(w, err, 500)
 			return
 		}
 

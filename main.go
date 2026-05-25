@@ -20,7 +20,7 @@ type ChirpyContext struct {
 	BadWords *trie.TrieNode
 }
 
-func reportError(w http.ResponseWriter, err error) {
+func reportError(w http.ResponseWriter, err error, code int) {
 	data, err := json.Marshal(ChirpError{
 		Error: err.Error(),
 	})
@@ -30,7 +30,7 @@ func reportError(w http.ResponseWriter, err error) {
 		w.Write([]byte("server error"))
 	}
 
-	w.WriteHeader(400)
+	w.WriteHeader(code)
 	w.Write(data)
 }
 
@@ -73,6 +73,7 @@ func main() {
 	mux.HandleFunc("POST /api/users", handleCreateUser(cctx))
 	mux.HandleFunc("POST /api/chirps", handleCreateChirp(cctx))
 	mux.HandleFunc("GET /api/chirps", handleGetChirps(cctx))
+	mux.HandleFunc("GET /api/chirps/{chirpID}", handleGetChirp(cctx))
 
 	var server http.Server
 
