@@ -9,11 +9,17 @@ INSERT INTO users (
     gen_random_uuid(),
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP,
-    $1
+    @email::TEXT
 ) RETURNING *;
 
 -- name: GetUser :one
 SELECT * FROM users WHERE id = $1;
+
+-- name: GetUserByEmail :one
+SELECT * FROM users WHERE email = @email;
+
+-- name: RemoveUser :exec
+DELETE FROM users WHERE id = @user_id;
 
 -- name: ClearUsers :exec
 

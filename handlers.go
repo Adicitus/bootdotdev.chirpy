@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Adicitus/bootdotdev.chirpy/internal/auth"
 	"github.com/Adicitus/bootdotdev.chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -96,6 +97,7 @@ func handleCreateUser(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.R
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		fmt.Println(0)
 		details, err := readRequestBody[UserDetails](r)
 
 		if err != nil {
@@ -103,6 +105,15 @@ func handleCreateUser(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.R
 			return
 		}
 
+		fmt.Println(1)
+		err = auth.ValidatePassword(details.Password)
+
+		if err != nil {
+			reportError(w, err, 400)
+			return
+		}
+
+		fmt.Println(2)
 		user, err := cctx.DB.CreateUser(r.Context(), details.Email)
 
 		if err != nil {
@@ -110,15 +121,34 @@ func handleCreateUser(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.R
 			return
 		}
 
-		data, err := json.Marshal(user)
-
+		fmt.Println(3)
+		fmt.Printf("Password: %s\n", details.Password)
+		hash, err := auth.HashPassword(details.Password)
+		fmt.Println(3.5)
 		if err != nil {
-			reportError(w, err, 500)
+			reportError(w, fmt.Errorf("Unable to process user details."), 500)
 			return
 		}
 
-		w.WriteHeader(201)
-		w.Write(data)
+		fmt.Println(4)
+		_, err = cctx.DB.CreateIdentity(r.Context(), database.CreateIdentityParams{
+			UserID: user.ID,
+			Auth:   hash,
+		})
+
+		fmt.Println(5)
+
+		if err != nil {
+			err = cctx.DB.RemoveUser(r.Context(), user.ID)
+			if err != nil {
+				reportError(w, fmt.Errorf("Unexpected server error."), 500)
+				return
+			}
+			reportError(w, fmt.Errorf("Unable to process user details."), 500)
+			return
+		}
+
+		reportResult(w, user, 201)
 	}
 }
 
@@ -218,5 +248,41 @@ func handleGetChirp(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Req
 
 		w.WriteHeader(200)
 		w.Write(data)
+	}
+}
+
+func handleLogin(cctx *ChirpyContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		details, err := readRequestBody[UserDetails](r)
+
+		if err != nil {
+			reportError(w, err, 400)
+		}
+
+		user, err := cctx.DB.GetUserByEmail(r.Context(), details.Email)
+
+		if err != nil {
+			reportError(w, err, 400)
+		}
+
+		id, err := cctx.DB.GetIdentity(r.Context(), user.ID)
+
+		if err != nil {
+			reportError(w, err, 500)
+		}
+
+		verified, err := auth.VerifyPassword(details.Password, id.Auth)
+
+		if err != nil {
+			reportError(w, err, 401)
+			return
+		}
+
+		if !verified {
+			reportError(w, fmt.Errorf("Invalid email/password."), 401)
+			return
+		}
+
+		reportResult(w, user, 200)
 	}
 }

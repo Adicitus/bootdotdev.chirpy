@@ -34,6 +34,18 @@ func reportError(w http.ResponseWriter, err error, code int) {
 	w.Write(data)
 }
 
+func reportResult[T any](w http.ResponseWriter, result T, code int) {
+	data, err := json.Marshal(result)
+
+	if err != nil {
+		w.WriteHeader(500)
+		w.Write([]byte("server error"))
+	}
+
+	w.WriteHeader(code)
+	w.Write(data)
+}
+
 func readRequestBody[T any](r *http.Request) (v T, err error) {
 	err = json.NewDecoder(r.Body).Decode(&v)
 	return
@@ -74,6 +86,7 @@ func main() {
 	mux.HandleFunc("POST /api/chirps", handleCreateChirp(cctx))
 	mux.HandleFunc("GET /api/chirps", handleGetChirps(cctx))
 	mux.HandleFunc("GET /api/chirps/{chirpID}", handleGetChirp(cctx))
+	mux.HandleFunc("POST /api/login", handleLogin(cctx))
 
 	var server http.Server
 
@@ -92,11 +105,20 @@ func main() {
 
 	fmt.Printf("Server listening on port 8080\n")
 
-	select {
-	case e := <-server_stop:
-		fmt.Printf("Unexpected server shutdown: %s\n", e)
-	case s := <-signal_stop:
-		fmt.Printf("Signal: %s\n", s)
+	for {
+		select {
+		case e := <-server_stop:
+			fmt.Printf("Unexpected server shutdown: %s\n", e)
+			os.Exit(1)
+		case s := <-signal_stop:
+			fmt.Printf("Signal: %s\n", s)
+			switch s {
+			case os.Interrupt:
+				os.Exit(0)
+			case os.Kill:
+				os.Exit(1)
+			}
+		}
 	}
 
 }
