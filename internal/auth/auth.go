@@ -10,8 +10,8 @@ import (
 )
 
 func ValidatePassword(password string) error {
-	if len(password) < 6 {
-		return fmt.Errorf("Password too short (must be 8 characters or longer)")
+	if len(password) < 1 {
+		return fmt.Errorf("Password too short (must be 6 characters or longer)")
 	}
 
 	return nil
@@ -42,10 +42,14 @@ func CreateToken(userID uuid.UUID, valididty time.Duration, secret []byte) (stri
 	return t.SignedString(secret)
 }
 
-func VerifyToken(tokenString string, secret []byte) (verified bool, err error) {
+func VerifyToken(tokenString string, secret []byte) (verified *jwt.Token, err error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 		return secret, nil
 	})
 
-	return token.Valid, err
+	if err != nil {
+		return nil, err
+	}
+
+	return token, err
 }

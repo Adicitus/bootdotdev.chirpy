@@ -66,9 +66,14 @@ func TestTokens(t *testing.T) {
 		t.Fail()
 	}
 
-	if !verified {
+	if verified == nil {
 		t.Log("Valid token not verified")
 		t.Fail()
+	} else {
+		if !verified.Valid {
+			t.Log("Valid token not marked as valid")
+			t.Fail()
+		}
 	}
 
 	verified, err = auth.VerifyToken(tokenString, secret2)
@@ -78,7 +83,7 @@ func TestTokens(t *testing.T) {
 		t.Fail()
 	}
 
-	if verified {
+	if verified != nil {
 		t.Log("Verified token with the wrong secret")
 		t.Fail()
 	}
@@ -94,7 +99,7 @@ func TestTokens(t *testing.T) {
 		t.Fail()
 	}
 
-	if verified {
+	if verified != nil {
 		t.Log("Verified an expired token")
 		t.Fail()
 	}

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/Adicitus/bootdotdev.chirpy/internal/auth"
 	"github.com/Adicitus/bootdotdev.chirpy/internal/database"
@@ -97,7 +98,6 @@ func handleCreateUser(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.R
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		fmt.Println(0)
 		details, err := readRequestBody[UserDetails](r)
 
 		if err != nil {
@@ -105,7 +105,6 @@ func handleCreateUser(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.R
 			return
 		}
 
-		fmt.Println(1)
 		err = auth.ValidatePassword(details.Password)
 
 		if err != nil {
@@ -113,7 +112,6 @@ func handleCreateUser(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.R
 			return
 		}
 
-		fmt.Println(2)
 		user, err := cctx.DB.CreateUser(r.Context(), details.Email)
 
 		if err != nil {
@@ -121,22 +119,15 @@ func handleCreateUser(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.R
 			return
 		}
 
-		fmt.Println(3)
-		fmt.Printf("Password: %s\n", details.Password)
 		hash, err := auth.HashPassword(details.Password)
-		fmt.Println(3.5)
 		if err != nil {
 			reportError(w, fmt.Errorf("Unable to process user details."), 500)
 			return
 		}
-
-		fmt.Println(4)
 		_, err = cctx.DB.CreateIdentity(r.Context(), database.CreateIdentityParams{
 			UserID: user.ID,
 			Auth:   hash,
 		})
-
-		fmt.Println(5)
 
 		if err != nil {
 			err = cctx.DB.RemoveUser(r.Context(), user.ID)
@@ -161,6 +152,13 @@ func handleCreateChirp(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.
 
 		if err != nil {
 			reportError(w, err, 400)
+			return
+		}
+
+		chirpSubmission.UserID, err = uuid.Parse(r.Header.Get("X-Chirpy-UserID"))
+
+		if err != nil {
+			reportError(w, err, 500)
 			return
 		}
 
@@ -253,7 +251,7 @@ func handleGetChirp(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Req
 
 func handleLogin(cctx *ChirpyContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		details, err := readRequestBody[UserDetails](r)
+		details, err := readRequestBody[LoginDetails](r)
 
 		if err != nil {
 			reportError(w, err, 400)
@@ -283,6 +281,20 @@ func handleLogin(cctx *ChirpyContext) http.HandlerFunc {
 			return
 		}
 
-		reportResult(w, user, 200)
+		validity := time.Hour
+		if details.expires_in_seconds != 0 {
+			validity = time.Duration(details.expires_in_seconds) * time.Second
+		}
+
+		t, err := auth.CreateToken(user.ID, validity, cctx.TokenKey)
+
+		if err != nil {
+			reportError(w, fmt.Errorf("internal server error"), 500)
+			return
+		}
+
+		reportResult(w, TokenResponse{
+			Token: t,
+		}, 200)
 	}
 }

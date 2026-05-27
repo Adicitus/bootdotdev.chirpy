@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -18,6 +19,7 @@ type ChirpyContext struct {
 	Stats    *ApiStats
 	DB       *database.Queries
 	BadWords *trie.TrieNode
+	TokenKey []byte
 }
 
 func reportError(w http.ResponseWriter, err error, code int) {
@@ -28,6 +30,7 @@ func reportError(w http.ResponseWriter, err error, code int) {
 	if err != nil {
 		w.WriteHeader(500)
 		w.Write([]byte("server error"))
+		return
 	}
 
 	w.WriteHeader(code)
@@ -59,9 +62,23 @@ func main() {
 
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
+		os.Exit(1)
 	}
 
 	cctx := new(ChirpyContext)
+
+	if key := os.Getenv("TOKEN_KEY"); key != "" {
+		cctx.TokenKey = []byte(key)
+	} else {
+		// Use a single-instance secret, this means all tokens will be invalidated whenever the server restarts
+		b := make([]byte, 256)
+		_, err := rand.Read(b)
+		if err != nil {
+			fmt.Printf("Error: %s\n", err)
+			os.Exit(1)
+		}
+		cctx.TokenKey = b
+	}
 
 	cctx.DB = database.New(db)
 
@@ -78,15 +95,16 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("/app/", cctx.Stats.HitsCounter(files))
-	mux.HandleFunc("GET /api/healthz", handleHealthz(cctx))
-	mux.HandleFunc("GET /admin/metrics", handleAdminMetrics(cctx))
-	mux.HandleFunc("POST /admin/reset", handleAdminReset(cctx))
-	mux.HandleFunc("POST /api/validate_chirp", handleValidateChirp(cctx))
 	mux.HandleFunc("POST /api/users", handleCreateUser(cctx))
-	mux.HandleFunc("POST /api/chirps", handleCreateChirp(cctx))
-	mux.HandleFunc("GET /api/chirps", handleGetChirps(cctx))
-	mux.HandleFunc("GET /api/chirps/{chirpID}", handleGetChirp(cctx))
 	mux.HandleFunc("POST /api/login", handleLogin(cctx))
+	mux.HandleFunc("POST /admin/reset", handleAdminReset(cctx))
+
+	mux.HandleFunc("GET /api/healthz", secure(cctx, handleHealthz(cctx)))
+	mux.HandleFunc("GET /admin/metrics", secure(cctx, handleAdminMetrics(cctx)))
+	mux.HandleFunc("POST /api/validate_chirp", secure(cctx, handleValidateChirp(cctx)))
+	mux.HandleFunc("POST /api/chirps", secure(cctx, handleCreateChirp(cctx)))
+	mux.HandleFunc("GET /api/chirps", secure(cctx, handleGetChirps(cctx)))
+	mux.HandleFunc("GET /api/chirps/{chirpID}", secure(cctx, handleGetChirp(cctx)))
 
 	var server http.Server
 
