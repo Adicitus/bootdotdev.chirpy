@@ -440,3 +440,42 @@ func handleUpdateUser(cctx *ChirpyContext) http.HandlerFunc {
 		reportResult(w, user, 200)
 	}
 }
+
+func handleRemoveChirp(cctx *ChirpyContext) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := uuid.Parse(r.Header.Get("X-Chirpy-UserID"))
+
+		if err != nil {
+			reportError(w, err, 400)
+		}
+
+		chirpID, err := uuid.Parse(r.PathValue("chirpID"))
+
+		if err != nil {
+			reportError(w, err, 500)
+			return
+		}
+
+		chirp, err := cctx.DB.GetChirp(r.Context(), chirpID)
+
+		if err != nil {
+			reportError(w, err, 404)
+			return
+		}
+
+		if chirp.UserID.ID() != userID.ID() {
+			reportError(w, fmt.Errorf("Forbidden"), 403)
+			return
+		}
+
+		err = cctx.DB.RemoveChirp(r.Context(), chirpID)
+
+		if err != nil {
+			reportError(w, err, 400)
+			return
+		}
+
+		w.WriteHeader(204)
+	}
+}

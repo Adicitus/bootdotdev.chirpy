@@ -95,6 +95,10 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("/app/", cctx.Stats.HitsCounter(files))
+
+	mux.HandleFunc("GET /api/chirps", handleGetChirps(cctx))
+	mux.HandleFunc("GET /api/chirps/{chirpID}", handleGetChirp(cctx))
+
 	mux.HandleFunc("POST /api/users", handleCreateUser(cctx))
 	mux.HandleFunc("POST /api/login", handleLogin(cctx))
 	mux.HandleFunc("POST /api/refresh", handleTokenRefresh(cctx))
@@ -105,8 +109,7 @@ func main() {
 	mux.HandleFunc("GET /admin/metrics", secure(cctx, handleAdminMetrics(cctx)))
 	mux.HandleFunc("POST /api/validate_chirp", secure(cctx, handleValidateChirp(cctx)))
 	mux.HandleFunc("POST /api/chirps", secure(cctx, handleCreateChirp(cctx)))
-	mux.HandleFunc("GET /api/chirps", secure(cctx, handleGetChirps(cctx)))
-	mux.HandleFunc("GET /api/chirps/{chirpID}", secure(cctx, handleGetChirp(cctx)))
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", secure(cctx, handleRemoveChirp(cctx)))
 	mux.HandleFunc("PUT /api/users", secure(cctx, handleUpdateUser(cctx)))
 
 	var server http.Server
