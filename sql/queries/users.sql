@@ -24,3 +24,6 @@ DELETE FROM users WHERE id = @user_id;
 -- name: ClearUsers :exec
 
 DELETE FROM users;
+
+-- name: SetEmail :one
+UPDATE users SET updated_at = CURRENT_TIMESTAMP, email = @email::TEXT WHERE id = @user_id RETURNING *;

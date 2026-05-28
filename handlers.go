@@ -383,3 +383,60 @@ func handleTokenRevoke(cctx *ChirpyContext) http.HandlerFunc {
 		w.WriteHeader(204)
 	}
 }
+
+func handleUpdateUser(cctx *ChirpyContext) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := uuid.Parse(r.Header.Get("X-Chirpy-UserID"))
+
+		if err != nil {
+			reportError(w, err, 500)
+			return
+		}
+
+		_, err = cctx.DB.GetUser(r.Context(), userID)
+
+		if err != nil {
+			reportError(w, err, 400)
+			return
+		}
+
+		details, err := readRequestBody[UserDetails](r)
+
+		if err != nil {
+			reportError(w, err, 400)
+		}
+
+		if details.Email != "" {
+			_, err := cctx.DB.SetEmail(r.Context(), database.SetEmailParams{
+				UserID: userID,
+				Email:  details.Email,
+			})
+
+			if err != nil {
+				reportError(w, err, 500)
+				return
+			}
+		}
+
+		if details.Password != "" {
+			hash, err := auth.HashPassword(details.Password)
+			if err != nil {
+				reportError(w, err, 500)
+				return
+			}
+
+			_, err = cctx.DB.SetIdentity(r.Context(), database.SetIdentityParams{
+				UserID: userID,
+				Auth:   hash,
+			})
+
+			if err != nil {
+				reportError(w, err, 500)
+				return
+			}
+		}
+
+		user, err := cctx.DB.GetUser(r.Context(), userID)
+		reportResult(w, user, 200)
+	}
+}

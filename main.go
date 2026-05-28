@@ -107,6 +107,7 @@ func main() {
 	mux.HandleFunc("POST /api/chirps", secure(cctx, handleCreateChirp(cctx)))
 	mux.HandleFunc("GET /api/chirps", secure(cctx, handleGetChirps(cctx)))
 	mux.HandleFunc("GET /api/chirps/{chirpID}", secure(cctx, handleGetChirp(cctx)))
+	mux.HandleFunc("PUT /api/users", secure(cctx, handleUpdateUser(cctx)))
 
 	var server http.Server
 

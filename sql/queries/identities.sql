@@ -13,3 +13,6 @@ INSERT INTO identities (
 
 -- name: GetIdentity :one
 SELECT * FROM identities WHERE user_id = @user_id;
+
+-- name: SetIdentity :one
+UPDATE identities SET updated_at = CURRENT_TIMESTAMP, auth = @auth WHERE user_id = @user_id RETURNING *;
