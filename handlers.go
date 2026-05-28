@@ -1,3 +1,9 @@
+/*
+handlers.go
+
+Contains functions to generate handler functions for http endpoints.
+*/
+
 package main
 
 import (
@@ -281,20 +287,99 @@ func handleLogin(cctx *ChirpyContext) http.HandlerFunc {
 			return
 		}
 
-		validity := time.Hour
-		if details.expires_in_seconds != 0 {
-			validity = time.Duration(details.expires_in_seconds) * time.Second
-		}
-
-		t, err := auth.CreateToken(user.ID, validity, cctx.TokenKey)
+		t, err := auth.CreateAccessToken(user.ID, time.Hour, cctx.TokenKey)
 
 		if err != nil {
 			reportError(w, fmt.Errorf("internal server error"), 500)
 			return
 		}
 
-		reportResult(w, TokenResponse{
-			Token: t,
-		}, 200)
+		rt, err := auth.CreateRefreshToken()
+
+		if err != nil {
+			reportError(w, err, 500)
+		}
+
+		cctx.DB.CreateToken(r.Context(), database.CreateTokenParams{
+			UserID:     user.ID,
+			Token:      rt,
+			Expiration: time.Now().Add(60 * 24 * time.Hour),
+		})
+
+		responseData := UserAuthDetails{
+			User:         user,
+			AccessToken:  t,
+			RefreshToken: rt,
+		}
+
+		reportResult(w, responseData, 200)
+	}
+}
+
+func handleTokenRefresh(cctx *ChirpyContext) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		token, err := getAuthorizationToken(r)
+
+		if err != nil {
+			reportError(w, err, 401)
+			return
+		}
+
+		tokenRecord, err := cctx.DB.GetToken(r.Context(), token)
+
+		if err != nil {
+			reportError(w, err, 401)
+			return
+		}
+
+		if time.Now().After(tokenRecord.ExpiresAt) {
+			reportError(w, fmt.Errorf("Token Expired"), 401)
+			return
+		}
+
+		if tokenRecord.RevokedAt.Valid {
+			reportError(w, fmt.Errorf("Token revoked"), 401)
+			return
+		}
+
+		// At this point we have a valid refresh token, so let's issue a new access token:
+		newToken, err := auth.CreateAccessToken(tokenRecord.UserID, time.Hour, cctx.TokenKey)
+
+		if err != nil {
+			reportError(w, err, 500)
+		}
+
+		data, err := json.Marshal(TokenResponse{
+			Token: newToken,
+		})
+
+		if err != nil {
+			reportError(w, err, 500)
+			return
+		}
+
+		w.WriteHeader(200)
+		w.Write(data)
+	}
+}
+
+func handleTokenRevoke(cctx *ChirpyContext) http.HandlerFunc {
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		token, err := getAuthorizationToken(r)
+
+		if err != nil {
+			reportError(w, err, 401)
+			return
+		}
+
+		_, err = cctx.DB.RevokeToken(r.Context(), token)
+
+		if err != nil {
+			reportError(w, err, 401)
+		}
+
+		w.WriteHeader(204)
 	}
 }

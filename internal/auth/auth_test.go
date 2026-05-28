@@ -52,7 +52,7 @@ func TestTokens(t *testing.T) {
 	secret2 := []byte("Not a secret!")
 	id := uuid.New()
 
-	tokenString, err := auth.CreateToken(id, 5*time.Minute, secret1)
+	tokenString, err := auth.CreateAccessToken(id, 5*time.Minute, secret1)
 
 	if err != nil {
 		t.Logf("failed to create token string: %s", err)
@@ -88,7 +88,7 @@ func TestTokens(t *testing.T) {
 		t.Fail()
 	}
 
-	tokenString2, err := auth.CreateToken(id, 5*time.Millisecond, secret1)
+	tokenString2, err := auth.CreateAccessToken(id, 5*time.Millisecond, secret1)
 
 	time.Sleep(5 * time.Millisecond)
 

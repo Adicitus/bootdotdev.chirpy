@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -25,7 +27,14 @@ func VerifyPassword(password, hash string) (correct bool, err error) {
 	return argon2id.ComparePasswordAndHash(password, hash)
 }
 
-func CreateToken(userID uuid.UUID, valididty time.Duration, secret []byte) (string, error) {
+func CreateRefreshToken() (token string, err error) {
+	b := make([]byte, 32)
+	_, err = rand.Read(b)
+	token = base64.StdEncoding.EncodeToString(b)
+	return
+}
+
+func CreateAccessToken(userID uuid.UUID, valididty time.Duration, secret []byte) (string, error) {
 	now := time.Now()
 	exp := now.Add(valididty)
 

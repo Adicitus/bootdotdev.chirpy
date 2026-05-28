@@ -97,6 +97,8 @@ func main() {
 	mux.Handle("/app/", cctx.Stats.HitsCounter(files))
 	mux.HandleFunc("POST /api/users", handleCreateUser(cctx))
 	mux.HandleFunc("POST /api/login", handleLogin(cctx))
+	mux.HandleFunc("POST /api/refresh", handleTokenRefresh(cctx))
+	mux.HandleFunc("POST /api/revoke", handleTokenRevoke(cctx))
 	mux.HandleFunc("POST /admin/reset", handleAdminReset(cctx))
 
 	mux.HandleFunc("GET /api/healthz", secure(cctx, handleHealthz(cctx)))
