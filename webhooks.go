@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/google/uuid"
 )
@@ -18,6 +20,30 @@ type WebhookPolkaData struct {
 
 func handlePolkaWebhook(cctx *ChirpyContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		polkaKey := os.Getenv("POLKA_KEY")
+
+		if polkaKey == "" {
+			reportError(w, fmt.Errorf("No Polka key set"), 500)
+			return
+		}
+
+		header, err := getAuthorizationHeader(r)
+
+		if err != nil {
+			reportError(w, err, 401)
+			return
+		}
+
+		if header.method != "apikey" {
+			reportError(w, fmt.Errorf("Invalid method"), 401)
+			return
+		}
+
+		if header.token != polkaKey {
+			reportError(w, fmt.Errorf("Invalid Polka key"), 401)
+			return
+		}
+
 		details, err := readRequestBody[WebhookRequest[WebhookPolkaData]](r)
 
 		if err != nil {
