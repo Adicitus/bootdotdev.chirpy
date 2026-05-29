@@ -319,35 +319,18 @@ func handleLogin(cctx *ChirpyContext) http.HandlerFunc {
 func handleTokenRefresh(cctx *ChirpyContext) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		token, err := getAuthorizationToken(r)
-
-		if err != nil {
-			reportError(w, err, 401)
-			return
-		}
-
-		tokenRecord, err := cctx.DB.GetToken(r.Context(), token)
-
-		if err != nil {
-			reportError(w, err, 401)
-			return
-		}
-
-		if time.Now().After(tokenRecord.ExpiresAt) {
-			reportError(w, fmt.Errorf("Token Expired"), 401)
-			return
-		}
-
-		if tokenRecord.RevokedAt.Valid {
-			reportError(w, fmt.Errorf("Token revoked"), 401)
-			return
-		}
-
-		// At this point we have a valid refresh token, so let's issue a new access token:
-		newToken, err := auth.CreateAccessToken(tokenRecord.UserID, time.Hour, cctx.TokenKey)
+		userID, err := uuid.Parse(r.Header.Get("X-Chirpy-UserID"))
 
 		if err != nil {
 			reportError(w, err, 500)
+			return
+		}
+
+		newToken, err := auth.CreateAccessToken(userID, time.Hour, cctx.TokenKey)
+
+		if err != nil {
+			reportError(w, err, 500)
+			return
 		}
 
 		data, err := json.Marshal(TokenResponse{
@@ -367,14 +350,14 @@ func handleTokenRefresh(cctx *ChirpyContext) http.HandlerFunc {
 func handleTokenRevoke(cctx *ChirpyContext) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		token, err := getAuthorizationToken(r)
+		header, err := getAuthorizationHeader(r)
 
 		if err != nil {
 			reportError(w, err, 401)
 			return
 		}
 
-		_, err = cctx.DB.RevokeToken(r.Context(), token)
+		_, err = cctx.DB.RevokeToken(r.Context(), header.token)
 
 		if err != nil {
 			reportError(w, err, 401)

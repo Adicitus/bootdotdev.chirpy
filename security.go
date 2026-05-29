@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/Adicitus/bootdotdev.chirpy/internal/auth"
 	"github.com/Adicitus/bootdotdev.chirpy/internal/database"
@@ -29,32 +30,47 @@ type UserAuthDetails struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-func getAuthorizationToken(r *http.Request) (token string, err error) {
+type AuthorizationHeader struct {
+	method string
+	token  string
+}
+
+func getAuthorizationHeader(r *http.Request) (authHeader AuthorizationHeader, err error) {
 	authorizationString := r.Header.Get("Authorization")
 
 	if authorizationString == "" {
-		return "", fmt.Errorf("No Authorization header")
+		return AuthorizationHeader{}, fmt.Errorf("No Authorization header")
 	}
 
 	parts := strings.Split(authorizationString, " ")
-	if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-		return "", fmt.Errorf("Malformed Authorization header")
+
+	if len(parts) != 2 {
+		return AuthorizationHeader{}, fmt.Errorf("Malformed Authorization header")
 	}
 
-	return parts[1], nil
+	authHeader = AuthorizationHeader{
+		method: strings.ToLower(parts[0]),
+		token:  parts[1],
+	}
+
+	return
 }
 
-func secure(cctx *ChirpyContext, handler http.HandlerFunc) http.HandlerFunc {
-
+func secureAccess(cctx *ChirpyContext, handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		token, err := getAuthorizationToken(r)
+		header, err := getAuthorizationHeader(r)
 
 		if err != nil {
 			reportError(w, err, 401)
 			return
 		}
 
-		verified, err := auth.VerifyToken(token, cctx.TokenKey)
+		if header.method != "bearer" {
+			reportError(w, fmt.Errorf("Invalid authorization method"), 401)
+			return
+		}
+
+		verified, err := auth.VerifyToken(header.token, cctx.TokenKey)
 
 		if err != nil {
 			reportError(w, err, 401)
@@ -68,6 +84,43 @@ func secure(cctx *ChirpyContext, handler http.HandlerFunc) http.HandlerFunc {
 		}
 
 		r.Header.Set("X-Chirpy-UserID", userID)
+
+		handler(w, r)
+	}
+}
+
+func secureRefresh(cctx *ChirpyContext, handler http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		header, err := getAuthorizationHeader(r)
+
+		if err != nil {
+			reportError(w, err, 401)
+			return
+		}
+
+		if header.method != "bearer" {
+			reportError(w, fmt.Errorf("Invalid authorization method"), 401)
+			return
+		}
+
+		token, err := cctx.DB.GetToken(r.Context(), header.token)
+
+		if err != nil {
+			reportError(w, err, 401)
+			return
+		}
+
+		if token.RevokedAt.Valid {
+			reportError(w, fmt.Errorf("Token revoked"), 401)
+			return
+		}
+
+		if token.ExpiresAt.Before(time.Now()) {
+			reportError(w, fmt.Errorf("Token expired"), 401)
+			return
+		}
+
+		r.Header.Set("X-Chirpy-UserID", token.UserID.String())
 
 		handler(w, r)
 	}
