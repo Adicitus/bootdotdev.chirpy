@@ -1,7 +1,7 @@
 /*
 handlers.go
 
-Contains functions to generate handler functions for http endpoints.
+Contains functions to generate handler functions for user-facing http endpoints.
 */
 
 package main

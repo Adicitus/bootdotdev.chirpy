@@ -56,6 +56,15 @@ func getAuthorizationHeader(r *http.Request) (authHeader AuthorizationHeader, er
 	return
 }
 
+/*
+Wraps the given handler function in a middleware that ensures the "Authorization"
+header of the request contains a valid access token before calling the handler.
+
+# If the Authorization header is missing or cannot be valdated, the handler will not be called.
+
+If the Authorization header is contains a verified token, the user ID of the associated
+user will be added to the request headers as "X-Chirpy-UserID".
+*/
 func secureAccess(cctx *ChirpyContext, handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		header, err := getAuthorizationHeader(r)
@@ -89,6 +98,15 @@ func secureAccess(cctx *ChirpyContext, handler http.HandlerFunc) http.HandlerFun
 	}
 }
 
+/*
+Wraps the given handler function in a middleware that ensures the "Authorization"
+header of the request contains a valid refresh token before calling the handler.
+
+If the Authorization header is missing or cannot be validated, the handler will not be called.
+
+If the Authorization header is contains a verified token, the user ID of the associated
+user will be added to the request headers as "X-Chirpy-UserID".
+*/
 func secureRefresh(cctx *ChirpyContext, handler http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		header, err := getAuthorizationHeader(r)

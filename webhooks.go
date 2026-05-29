@@ -1,3 +1,9 @@
+/*
+webhooks.go
+
+Contains functions to generate handler functions for webhook http endpoints.
+*/
+
 package main
 
 import (

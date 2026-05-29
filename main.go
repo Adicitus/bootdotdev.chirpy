@@ -100,9 +100,14 @@ func main() {
 	mux.HandleFunc("GET /api/chirps/{chirpID}", handleGetChirp(cctx))
 	mux.HandleFunc("POST /api/login", handleLogin(cctx))
 
-	// User endpoints that should require an access token but don't for the sake of this being a tutorial
-	mux.HandleFunc("POST /api/users", handleCreateUser(cctx))
-	mux.HandleFunc("POST /admin/reset", handleAdminReset(cctx))
+	// User endpoints that should normally require an access token but don't when running in dev mode (boot.dev tutorial requirement)
+	if os.Getenv("PLATFORM") == "dev" {
+		mux.HandleFunc("POST /api/users", handleCreateUser(cctx))
+		mux.HandleFunc("POST /admin/reset", handleAdminReset(cctx))
+	} else {
+		mux.HandleFunc("POST /api/users", secureAccess(cctx, handleCreateUser(cctx)))
+		mux.HandleFunc("POST /admin/reset", secureAccess(cctx, handleAdminReset(cctx)))
+	}
 
 	// User endpoints that require refresh tokens
 	mux.HandleFunc("POST /api/refresh", secureRefresh(cctx, handleTokenRefresh(cctx)))
