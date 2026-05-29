@@ -94,23 +94,30 @@ func main() {
 	files := http.StripPrefix("/app", http.FileServer(http.Dir("./static")))
 	mux := http.NewServeMux()
 
+	// User endpoints that can be accessed without authentication
 	mux.Handle("/app/", cctx.Stats.HitsCounter(files))
-
 	mux.HandleFunc("GET /api/chirps", handleGetChirps(cctx))
 	mux.HandleFunc("GET /api/chirps/{chirpID}", handleGetChirp(cctx))
-
-	mux.HandleFunc("POST /api/users", handleCreateUser(cctx))
 	mux.HandleFunc("POST /api/login", handleLogin(cctx))
-	mux.HandleFunc("POST /api/refresh", handleTokenRefresh(cctx))
-	mux.HandleFunc("POST /api/revoke", handleTokenRevoke(cctx))
+
+	// User endpoints that should require authentication but don't for the sake of this being a tutorial
+	mux.HandleFunc("POST /api/users", handleCreateUser(cctx))
 	mux.HandleFunc("POST /admin/reset", handleAdminReset(cctx))
 
+	// User endpoints that require refresh tokens
+	mux.HandleFunc("POST /api/refresh", handleTokenRefresh(cctx))
+	mux.HandleFunc("POST /api/revoke", handleTokenRevoke(cctx))
+
+	// User endpoints requiring an Access Token
 	mux.HandleFunc("GET /api/healthz", secure(cctx, handleHealthz(cctx)))
 	mux.HandleFunc("GET /admin/metrics", secure(cctx, handleAdminMetrics(cctx)))
 	mux.HandleFunc("POST /api/validate_chirp", secure(cctx, handleValidateChirp(cctx)))
 	mux.HandleFunc("POST /api/chirps", secure(cctx, handleCreateChirp(cctx)))
 	mux.HandleFunc("DELETE /api/chirps/{chirpID}", secure(cctx, handleRemoveChirp(cctx)))
 	mux.HandleFunc("PUT /api/users", secure(cctx, handleUpdateUser(cctx)))
+
+	// Webhooks
+	mux.HandleFunc("POST /api/polka/webhooks", handlePolkaWebhook(cctx))
 
 	var server http.Server
 
