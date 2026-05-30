@@ -201,6 +201,10 @@ func handleGetChirps(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Re
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		author_id, err := uuid.Parse(r.URL.Query().Get("author_id"))
+		order := strings.ToLower(r.URL.Query().Get("sort"))
+		if order != "asc" && order != "desc" {
+			order = "asc"
+		}
 
 		var chirps []database.Chirp
 
@@ -213,6 +217,18 @@ func handleGetChirps(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Re
 		if err != nil {
 			reportError(w, err, 500)
 			return
+		}
+
+		if order == "desc" {
+			// sqlc does not have a good way to specify ASC or DESC in queries.
+			// So instead of duplicating GetChirps queries, queries are sorted in ascending order
+			// and reverse the results here.
+			lim := len(chirps)
+			for i := 0; i < lim/2; i++ {
+				t := chirps[i]
+				chirps[i] = chirps[lim-1-i]
+				chirps[lim-1-i] = t
+			}
 		}
 
 		data, err := json.Marshal(chirps)
