@@ -199,7 +199,16 @@ func handleCreateChirp(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.
 func handleGetChirps(cctx *ChirpyContext) func(w http.ResponseWriter, r *http.Request) {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		chirps, err := cctx.DB.GetChirps(r.Context())
+
+		author_id, err := uuid.Parse(r.URL.Query().Get("author_id"))
+
+		var chirps []database.Chirp
+
+		if err != nil {
+			chirps, err = cctx.DB.GetChirps(r.Context())
+		} else {
+			chirps, err = cctx.DB.GetChirpsByAuthor(r.Context(), author_id)
+		}
 
 		if err != nil {
 			reportError(w, err, 500)
