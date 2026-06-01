@@ -83,7 +83,9 @@ func handleValidateChirp(cctx *ChirpyContext) func(w http.ResponseWriter, r *htt
 		valid, err := validateChirp(r.Context(), cctx, &chirp)
 
 		if err != nil {
-			reportError(w, err, 400)
+			reportResult(w, ChirpError{
+				Error: err.Error(),
+			}, 409)
 			return
 		}
 

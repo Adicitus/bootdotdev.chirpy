@@ -34,7 +34,11 @@ func reportError(w http.ResponseWriter, err error, code int) {
 	}
 
 	w.WriteHeader(code)
-	w.Write(data)
+	if os.Getenv("PLATFORM") == "dev" {
+		w.Write(data)
+	} else {
+		w.Write([]byte(http.StatusText(code)))
+	}
 }
 
 func reportResult[T any](w http.ResponseWriter, result T, code int) {
