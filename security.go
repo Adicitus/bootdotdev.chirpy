@@ -90,6 +90,7 @@ func secureAccess(cctx *ChirpyContext, handler http.HandlerFunc) http.HandlerFun
 
 		if err != nil {
 			reportError(w, err, 400)
+			return
 		}
 
 		r.Header.Set("X-Chirpy-UserID", userID)
