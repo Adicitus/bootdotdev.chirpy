@@ -4,17 +4,40 @@ Chirpy is a Twitter/Bluesky-style micro-blogging platform developed for the Boot
 This system as implemented in the course is primarily a RESTful HTTP API for for publishing and retrieving "Chirps".
 
 ## Installation
-Chirpy is designed to use [https://www.postgresql.org/](PostgreSQL) as a backend, so you will need to install it before running Chirpy.
+Chirpy is designed to use [PostgreSQL](https://www.postgresql.org/) as a backend, so you will need to install it before running Chirpy.
 
-To install Chirpy, download the project files:
+To configure your database, you will need the [Goose](https://pkg.go.dev/github.com/pressly/goose/v3) database migration tool:
+```
+go install github.com/pressly/goose/v3/cmd/goose@latest
+```
+
+To install Chirpy, download the source files:
 ```
 > git clone https://github.com/Adicitus/bootdotdev.chirpy.git
 ```
 
-## Configuration
-In order to run the chirpy server, you'll need a .env file.
 
-For details on configuration options, see .env.sample in the source files.
+
+## Configuration
+1. In order to run the chirpy server, you'll need a .env file (see ".env.sample" in the source files for an example).
+
+    The .env file needs to contain the following variables:
+    - **GOOSE_DRIVER**: The database driver to use with the Goose DB migration tool (should be "postgres").
+    - **GOOSE_DBSTRING**: The connection string that goose should to your PostgreSQL server
+    - **GOOSE_MIGRATION_DIR**: Path to the folder containing the SQL migration files.
+        - This is the "sql/schema" folder in the source files.
+        - The path needs to be absolute or relative to the folder that you plan to execure Goose from. - These instructions assume you will be running Goose from the top directory of the source files.
+    - **DB_URL**: The connection string that Chirpy should use to access your PostgreSQL server.
+
+2. Configure the Database:
+    ```
+    goose up
+    ```
+
+    You should see the following message:
+    ```
+    successfully migrated database to version: 5
+    ```
 
 ## Basic Usage
 Simply Launch the server from inside the source directory:
