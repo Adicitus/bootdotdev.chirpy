@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/Adicitus/bootdotdev.chirpy/frontend"
 	"github.com/Adicitus/bootdotdev.chirpy/internal/database"
 	"github.com/Adicitus/bootdotdev.chirpy/trie"
 	"github.com/joho/godotenv"
@@ -95,7 +96,7 @@ func main() {
 	cctx.BadWords.Add("sharbert")
 	cctx.BadWords.Add("fornax")
 
-	files := http.StripPrefix("/app", http.FileServer(http.Dir("./static")))
+	files := http.StripPrefix("/app", http.FileServer(http.FS(frontend.FS)))
 	mux := http.NewServeMux()
 
 	// User endpoints that can be accessed without authentication
