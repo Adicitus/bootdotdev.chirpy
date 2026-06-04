@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"database/sql"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,7 +15,11 @@ import (
 	"github.com/Adicitus/bootdotdev.chirpy/trie"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"github.com/pressly/goose/v3"
 )
+
+//go:embed sql/schema/*.sql
+var migrations embed.FS
 
 type ChirpyContext struct {
 	Stats    *ApiStats
@@ -69,6 +74,33 @@ func main() {
 		fmt.Printf("Error: %s\n", err)
 		os.Exit(1)
 	}
+
+	goose.SetBaseFS(migrations)
+
+	dbVersion, err := goose.GetDBVersion(db)
+
+	if err != nil {
+		fmt.Printf("Error: %e\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Current DB version: %d\n", dbVersion)
+
+	err = goose.Up(db, "sql/schema")
+
+	if err != nil {
+		fmt.Printf("Error: %e\n", err)
+		os.Exit(1)
+	}
+
+	dbVersion, err = goose.GetDBVersion(db)
+
+	if err != nil {
+		fmt.Printf("Error: %e\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("DB version: %d\n", dbVersion)
 
 	cctx := new(ChirpyContext)
 
