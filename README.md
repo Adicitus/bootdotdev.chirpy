@@ -4,45 +4,33 @@ Chirpy is a Twitter/Bluesky-style micro-blogging platform developed for the Boot
 This system as implemented in the course is primarily a RESTful HTTP API for for publishing and retrieving "Chirps".
 
 ## Installation
-Chirpy is designed to use [PostgreSQL](https://www.postgresql.org/) as a backend, so you will need to install it before running Chirpy.
+Chirpy is designed to use [PostgreSQL](https://www.postgresql.org/) as a backend, so you will need to install it and create a DB before running Chirpy.
 
-To configure your database, you will need the [Goose](https://pkg.go.dev/github.com/pressly/goose/v3) database migration tool:
-```
-go install github.com/pressly/goose/v3/cmd/goose@latest
-```
+In order to interact with the DB, Chirpy uses [sqlc](https://docs.sqlc.dev/en/latest/overview/install.html) to compile SQL queries in the "sql/queries" folder.
 
-To install Chirpy, download the source files:
-```
-> git clone https://github.com/Adicitus/bootdotdev.chirpy.git
-```
-
-
+To install Chirpy:
+1. Download the source files:
+    ```
+    > git clone https://github.com/Adicitus/bootdotdev.chirpy.git
+    ```
+2. Build database module:
+    ```
+    > sqlc generate
+    ```
+3. Install chirpy:
+    ```
+    > go install .
+    ```
 
 ## Configuration
-1. In order to run the chirpy server, you'll need a .env file (see ".env.sample" in the source files for an example).
+In order to run the chirpy server, you'll need tp såecify the following environment variables (see ".env.sample" in the source files for an example).
 
-    The .env file needs to contain the following variables:
-    - **GOOSE_DRIVER**: The database driver to use with the Goose DB migration tool (should be "postgres").
-    - **GOOSE_DBSTRING**: The connection string that goose should to your PostgreSQL server
-    - **GOOSE_MIGRATION_DIR**: Path to the folder containing the SQL migration files.
-        - This is the "sql/schema" folder in the source files.
-        - The path needs to be absolute or relative to the folder that you plan to execure Goose from. - These instructions assume you will be running Goose from the top directory of the source files.
     - **DB_URL**: The connection string that Chirpy should use to access your PostgreSQL server.
 
-2. Configure the Database:
-    ```
-    goose up
-    ```
-
-    You should see the following message:
-    ```
-    successfully migrated database to version: 5
-    ```
-
 ## Basic Usage
-Simply Launch the server from inside the source directory:
+You should now be able to simply run:
 ```
-go run .
+bootdotdev.chirpy
 ```
 
 ## API
